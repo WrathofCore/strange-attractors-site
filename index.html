@@ -82,7 +82,6 @@
     <div class="links">
       <a href="#system" class="hide">The system</a>
       <a href="#onchain" class="hide">On-chain</a>
-      <a href="#gallery" class="hide">Gallery</a>
       <a href="#mint">Mint</a>
     </div>
   </nav>
@@ -137,14 +136,6 @@
     </div>
   </div></div>
 
-  <section id="gallery">
-    <div class="eyebrow" style="margin-bottom:16px">Live from the chain</div>
-    <h2>Already minted.</h2>
-    <p class="lead">Every tile below is a real token, pulled from the contract and rendered live in your browser right now.</p>
-    <div class="grid" id="grid"></div>
-    <div style="margin-top:24px"><button class="ghost" id="gridShuf">↻ shuffle</button></div>
-  </section>
-
   <footer>
     <div>Strange Attractors · 1024 · renders forever</div>
     <div class="socials">
@@ -186,6 +177,8 @@ var ABI = [
   "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"
 ];
 
+function b64json(uri){ var i=uri.indexOf(","); var body=uri.slice(i+1); var txt = uri.slice(0,i).indexOf("base64")>=0 ? atob(body) : decodeURIComponent(body); return JSON.parse(txt); }
+
 var provider, signer, nft, account, read;
 var $=function(id){return document.getElementById(id);};
 $("net").textContent = C.name;
@@ -193,7 +186,7 @@ $("net").textContent = C.name;
 function setStatus(msg, cls){ var s=$("status"); s.className="status"+(cls?" "+cls:""); s.innerHTML=msg; }
 function short(a){ return a.slice(0,6)+"…"+a.slice(-4); }
 
-try { read = new ethers.Contract(C.contract, ABI, new ethers.JsonRpcProvider(C.rpc)); refresh(); } catch(e){}
+try { read = new ethers.Contract(C.contract, ABI, new ethers.JsonRpcProvider(C.rpc, undefined, { batchMaxCount: 1 })); refresh(); } catch(e){}
 
 async function refresh(){
   try {
@@ -273,9 +266,8 @@ async function showPiece(tokenId){
     var src = nft || read;
     if(tokenId===undefined || tokenId===null){ var m=await src.minted(); tokenId=m-1n; }
     var uri = await src.tokenURI(tokenId);
-    var json = JSON.parse(atob(uri.split(",")[1]));
-    var html = atob(json.animation_url.split(",")[1]);
-    $("frame").srcdoc = html;
+    var json = b64json(uri);
+    $("frame").src = json.animation_url;
     $("cap").textContent = "Your piece #"+tokenId.toString();
     $("piece").style.display="block";
   }catch(e){}
@@ -286,18 +278,14 @@ async function showPiece(tokenId){
 /* live art: hero background, sample + traits, gallery (read-only) */
 (function(){
   var R = (typeof read!=="undefined" && read) ? read : null;
-  try{ if(!R) R = new ethers.Contract(C.contract, ABI, new ethers.JsonRpcProvider(C.rpc)); }catch(e){ R=null; }
+  try{ if(!R) R = new ethers.Contract(C.contract, ABI, new ethers.JsonRpcProvider(C.rpc, undefined, { batchMaxCount: 1 })); }catch(e){ R=null; }
   var supply = 0;
   function rnd(n){ return Math.floor(Math.random()*n); }
   function randId(){ return supply>0 ? rnd(supply) : 0; }
   function esc(s){ return (s==null?"":String(s)).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];}); }
 
-  async function pieceFor(id){
-    var uri = await R.tokenURI(id);
-    var json = JSON.parse(atob(uri.split(",")[1]));
-    return { html: atob(json.animation_url.split(",")[1]), attrs: json.attributes||[], name: json.name||("#"+id) };
-  }
-  async function paint(el, id){ try{ var p=await pieceFor(id); el.srcdoc=p.html; return p; }catch(e){ return null; } }
+  async function pieceFor(id){ var uri = await R.tokenURI(id); var json = b64json(uri); return { url: json.animation_url, attrs: json.attributes||[], name: json.name||("#"+id) }; }
+  async function paint(el, id){ try{ var p=await pieceFor(id); el.src=p.url; return p; }catch(e){ return null; } }
 
   var heroFrame = document.getElementById("heroFrame");
   async function cycleHero(){
@@ -319,29 +307,13 @@ async function showPiece(tokenId){
     }
   }
 
-  var grid = document.getElementById("grid");
-  async function loadGrid(){
-    if(!R){ return; }
-    grid.innerHTML="";
-    var n = Math.min(6, supply||0);
-    var used = {};
-    for(var i=0;i<n;i++){
-      var id=randId(), guard=0;
-      while(used[id] && guard++<12){ id=randId(); }
-      used[id]=1;
-      var f=document.createElement("iframe"); f.title="piece #"+id; f.setAttribute("scrolling","no");
-      grid.appendChild(f); paint(f, id);
-    }
-  }
-
   var lc = document.getElementById("lnkContract");
   if(lc){ lc.href = C.explorer + "/address/" + C.contract; }
 
   (async function init(){
     if(!R) return;
     try{ supply = Number(await R.minted()); }catch(e){ supply=0; }
-    cycleHero(); loadSample(); loadGrid();
+    cycleHero(); loadSample();
     var ss=document.getElementById("sampleShuf"); if(ss) ss.onclick=loadSample;
-    var gs=document.getElementById("gridShuf"); if(gs) gs.onclick=loadGrid;
   })();
 })();
