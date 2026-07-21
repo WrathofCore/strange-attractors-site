@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strange Attractors | Fully On-Chain Generative Art</title>
+<meta name="description" content="1024 living strange attractors, each seeded and rendered entirely on-chain. Free mint on Robinhood Chain.">
+<meta property="og:title" content="Strange Attractors">
+<meta property="og:description" content="1024 living strange attractors, rendered entirely on-chain. Free mint on Robinhood Chain.">
+<meta property="og:type" content="website">
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+<style>
+  :root{ --bg:#050507; --panel:#0e0e13; --line:#1e1e26; --ink:#eae7df; --dim:#8a8894; --accent:#57c7ff; --gold:#ffcf6b; }
+  *{box-sizing:border-box} html{scroll-behavior:smooth} body,html{margin:0}
+  body{ background:var(--bg); color:var(--ink); font-family:-apple-system,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a{color:inherit}
+  .eyebrow{ font-family:ui-monospace,monospace; letter-spacing:.42em; font-size:12px; color:var(--dim); text-transform:uppercase; }
+  h1,h2{ font-family:Georgia,'Times New Roman',serif; font-weight:normal; letter-spacing:.02em; }
+
+  nav{ position:absolute; top:0; left:0; right:0; z-index:20; display:flex; justify-content:space-between; align-items:center; padding:20px 26px; }
+  nav .brand{ font-family:Georgia,serif; font-size:18px; letter-spacing:.06em; }
+  nav .links{ display:flex; gap:22px; align-items:center; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); }
+  nav .links a{ text-decoration:none; } nav .links a:hover{ color:var(--ink); }
+
+  .hero{ position:relative; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; padding:90px 22px 50px; text-align:center; }
+  .hero-bg{ position:absolute; inset:0; z-index:0; pointer-events:none; }
+  .hero-bg iframe{ width:100%; height:100%; border:0; opacity:.5; }
+  .hero-veil{ position:absolute; inset:0; z-index:1; background:radial-gradient(70% 60% at 50% 42%, rgba(5,5,7,.32) 0%, rgba(5,5,7,.72) 62%, rgba(5,5,7,.97) 100%); pointer-events:none; }
+  .hero-inner{ position:relative; z-index:2; width:100%; max-width:540px; }
+  .hero h1{ font-size:clamp(44px,8vw,66px); margin:14px 0 8px; }
+  .tag{ color:#c7c9c2; font-size:15px; line-height:1.55; margin:0 auto 26px; max-width:440px; }
+
+  .card{ background:rgba(14,14,19,.82); backdrop-filter:blur(6px); border:1px solid var(--line); border-radius:16px; padding:24px 22px; }
+  .supply{ font-family:ui-monospace,monospace; font-size:15px; color:var(--dim); margin-bottom:4px; text-align:center; }
+  .supply b{ color:var(--ink); }
+  .bar{ height:6px; background:#17171e; border-radius:100px; overflow:hidden; margin:14px 0 20px; }
+  .bar > div{ height:100%; width:0%; background:linear-gradient(90deg,#2f7fb0,var(--accent)); transition:width .4s; }
+  button{ width:100%; border:none; border-radius:100px; padding:15px; font-size:15px; font-weight:700; cursor:pointer; background:var(--ink); color:#0a0a0d; transition:.15s; }
+  button:hover:not(:disabled){ transform:translateY(-1px); }
+  button:disabled{ opacity:.4; cursor:not-allowed; }
+  .status{ font-family:ui-monospace,monospace; font-size:12.5px; color:var(--dim); margin-top:16px; min-height:18px; word-break:break-word; text-align:center; }
+  .status a{ color:var(--accent); } .status.ok{ color:#3fe0a0; } .status.err{ color:#ff6b6b; }
+  #piece{ display:none; margin-top:20px; }
+  #piece iframe{ width:100%; aspect-ratio:1; border:1px solid var(--line); border-radius:12px; background:#050507; }
+  #piece .cap{ font-family:ui-monospace,monospace; font-size:12px; color:var(--gold); margin-top:10px; text-align:center; }
+  .net{ display:inline-block; font-family:ui-monospace,monospace; font-size:10.5px; color:var(--dim); border:1px solid var(--line); border-radius:100px; padding:3px 10px; margin-bottom:14px; }
+  #addr{ font-family:ui-monospace,monospace; font-size:11px; color:#4a4a52; margin-top:16px; text-align:center; }
+  .scrollcue{ position:relative; z-index:2; margin-top:36px; font-size:11px; letter-spacing:.3em; color:var(--dim); text-transform:uppercase; }
+
+  section{ max-width:960px; margin:0 auto; padding:88px 24px; }
+  h2{ font-size:clamp(28px,4vw,40px); margin:0 0 18px; }
+  .lead{ color:#b9bbb4; font-size:16px; line-height:1.7; max-width:640px; }
+
+  .sample{ display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:34px; align-items:start; }
+  .sample iframe{ width:100%; aspect-ratio:1; border:1px solid var(--line); border-radius:12px; background:#050507; }
+  .traits{ display:flex; flex-direction:column; gap:0; }
+  .trait{ display:flex; justify-content:space-between; border-bottom:1px solid var(--line); padding:10px 2px; font-size:13px; }
+  .trait .t{ color:var(--dim); font-family:ui-monospace,monospace; font-size:11px; letter-spacing:.06em; text-transform:uppercase; }
+  .trait .val{ color:var(--ink); }
+  .btnrow{ margin-top:16px; }
+  .ghost{ background:transparent!important; color:var(--ink)!important; border:1px solid var(--line)!important; width:auto!important; padding:11px 20px!important; font-size:12px!important; letter-spacing:.1em; font-weight:600!important; }
+
+  .band{ border-top:1px solid var(--line); border-bottom:1px solid var(--line); background:rgba(87,199,255,.03); }
+  .band .inner{ max-width:820px; margin:0 auto; padding:80px 24px; text-align:center; }
+  .band h2{ margin-bottom:14px; }
+  .band .accent{ color:var(--accent); }
+  .points{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:18px; margin-top:34px; text-align:left; }
+  .point .k{ font-family:ui-monospace,monospace; font-size:11px; color:var(--gold); letter-spacing:.1em; }
+  .point .d{ color:#a9aba4; font-size:13.5px; line-height:1.55; margin-top:8px; }
+
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; margin-top:30px; }
+  .grid iframe{ width:100%; aspect-ratio:1; border:1px solid var(--line); border-radius:10px; background:#050507; }
+
+  footer{ border-top:1px solid var(--line); padding:34px 26px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; color:var(--dim); font-size:12px; letter-spacing:.06em; }
+  footer .socials{ display:flex; gap:18px; } footer a{ text-decoration:none; } footer a:hover{ color:var(--ink); }
+  @media(max-width:640px){ .sample{grid-template-columns:1fr} nav .links a.hide{display:none} }
+</style>
+</head>
+<body>
+
+  <nav>
+    <div class="brand">Strange Attractors</div>
+    <div class="links">
+      <a href="#system" class="hide">The system</a>
+      <a href="#onchain" class="hide">On-chain</a>
+      <a href="#gallery" class="hide">Gallery</a>
+      <a href="#mint">Mint</a>
+    </div>
+  </nav>
+
+  <header class="hero" id="mint">
+    <div class="hero-bg"><iframe id="heroFrame" title="live piece" scrolling="no"></iframe></div>
+    <div class="hero-veil"></div>
+    <div class="hero-inner">
+      <div class="net" id="net"></div>
+      <div class="eyebrow">Fully On-Chain</div>
+      <h1>Strange Attractors</h1>
+      <p class="tag">1024 living strange attractors, each seeded at mint and rendered entirely on-chain. Free mint, one per wallet. The art is the contract.</p>
+      <div class="card">
+        <div class="supply"><b id="minted">…</b> / <span id="max">1024</span> minted</div>
+        <div class="bar"><div id="fill"></div></div>
+        <button id="btn" onclick="action()">Connect Wallet</button>
+        <div class="status" id="status"></div>
+        <div id="piece">
+          <iframe id="frame" title="your piece"></iframe>
+          <div class="cap" id="cap"></div>
+        </div>
+        <div id="addr"></div>
+      </div>
+    </div>
+    <div class="scrollcue">scroll ↓</div>
+  </header>
+
+  <section id="system">
+    <div class="eyebrow" style="margin-bottom:16px">The system</div>
+    <h2>One hash. One attractor. Forever.</h2>
+    <p class="lead">At mint, the contract stamps your token a unique hash drawn from on-chain data. That hash seeds a deterministic renderer. Feed it the same hash and it draws the exact same piece on any machine, for as long as the chain exists. Nothing is pre-rendered. The image is computed live from the seed every time it loads.</p>
+    <div class="sample">
+      <div>
+        <iframe id="sampleFrame" title="sample piece" scrolling="no"></iframe>
+        <div class="btnrow"><button class="ghost" id="sampleShuf">↻ another piece</button></div>
+      </div>
+      <div>
+        <div class="eyebrow" style="margin-bottom:14px">Traits from the hash</div>
+        <div class="traits" id="sampleTraits"><div class="trait"><span class="t">reading chain</span><span class="val">…</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="band" id="onchain"><div class="inner">
+    <div class="eyebrow" style="margin-bottom:16px">Why it matters</div>
+    <h2>The renderer lives <span class="accent">in the contract.</span></h2>
+    <p class="lead" style="margin:0 auto; text-align:center">No IPFS. No server. No image files sitting on someone's cloud. The script, the traits, and the animation are stored on-chain, so every piece regenerates from just a browser and Robinhood Chain.</p>
+    <div class="points">
+      <div class="point"><div class="k">DETERMINISTIC</div><div class="d">One token hash seeds a real PRNG. Same hash, same art, every time. Verifiable by anyone.</div></div>
+      <div class="point"><div class="k">TRAITS FROM SEED</div><div class="d">Rarity isn't metadata bolted on afterward. Every trait falls straight out of the hash.</div></div>
+      <div class="point"><div class="k">ERC-721</div><div class="d">Standard token on Robinhood Chain, viewable on Blockscout and any RH-chain marketplace.</div></div>
+    </div>
+  </div></div>
+
+  <section id="gallery">
+    <div class="eyebrow" style="margin-bottom:16px">Live from the chain</div>
+    <h2>Already minted.</h2>
+    <p class="lead">Every tile below is a real token, pulled from the contract and rendered live in your browser right now.</p>
+    <div class="grid" id="grid"></div>
+    <div style="margin-top:24px"><button class="ghost" id="gridShuf">↻ shuffle</button></div>
+  </section>
+
+  <footer>
+    <div>Strange Attractors · 1024 · renders forever</div>
+    <div class="socials">
+      <a href="#" id="lnkX">X</a>
+      <a href="#" id="lnkTg">Telegram</a>
+      <a href="#" id="lnkContract" target="_blank">Contract ↗</a>
+    </div>
+  </footer>
+
+<script>
+/* config: flip NET to "mainnet" and set the mainnet address to go live */
+var NET = "mainnet";
+var NETWORKS = {
+  testnet: {
+    contract: "0x21324d421ebF4FcD417743Ab838f784A27eC9395",
+    chainId: 46630,
+    name: "Robinhood Chain Testnet",
+    rpc: "https://rpc.testnet.chain.robinhood.com",
+    explorer: "https://explorer.testnet.chain.robinhood.com"
+  },
+  mainnet: {
+    contract: "0x23646044a43736c33310C713Ee7C18C5F016e02e",
+    chainId: 4663,
+    name: "Robinhood Chain",
+    rpc: "https://rpc.mainnet.chain.robinhood.com",
+    explorer: "https://robinhoodchain.blockscout.com"
+  }
+};
+var C = NETWORKS[NET];
+var ABI = [
+  "function minted() view returns (uint256)",
+  "function MAX_SUPPLY() view returns (uint256)",
+  "function saleActive() view returns (bool)",
+  "function maxPerWallet() view returns (uint256)",
+  "function price() view returns (uint256)",
+  "function balanceOf(address) view returns (uint256)",
+  "function mint(uint256 qty) payable",
+  "function tokenURI(uint256) view returns (string)",
+  "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"
+];
+
+var provider, signer, nft, account, read;
+var $=function(id){return document.getElementById(id);};
+$("net").textContent = C.name;
+
+function setStatus(msg, cls){ var s=$("status"); s.className="status"+(cls?" "+cls:""); s.innerHTML=msg; }
+function short(a){ return a.slice(0,6)+"…"+a.slice(-4); }
+
+try { read = new ethers.Contract(C.contract, ABI, new ethers.JsonRpcProvider(C.rpc)); refresh(); } catch(e){}
+
+async function refresh(){
+  try {
+    var src = nft || read; if(!src) return;
+    var minted = await src.minted(), max = await src.MAX_SUPPLY(), active = await src.saleActive();
+    $("minted").textContent = minted.toString();
+    $("max").textContent = max.toString();
+    $("fill").style.width = (Number(minted)/Number(max)*100)+"%";
+    if(account){
+      var bal = await src.balanceOf(account), cap = await src.maxPerWallet();
+      var btn=$("btn");
+      if(!active){ btn.disabled=true; btn.textContent="Mint not open yet"; }
+      else if(cap!=0n && bal>=cap){ btn.disabled=true; btn.textContent="Already minted ✓"; }
+      else if(minted>=max){ btn.disabled=true; btn.textContent="Sold out"; }
+      else { btn.disabled=false; btn.textContent="Mint"; }
+      if(bal>0n) showPiece();
+    }
+  } catch(e){ /* ignore */ }
+}
+
+async function action(){
+  if(!account){ return connect(); }
+  return mint();
+}
+
+async function connect(){
+  if(!window.ethereum){ setStatus("No wallet found. Install MetaMask.", "err"); return; }
+  try{
+    setStatus("Connecting…");
+    provider = new ethers.BrowserProvider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    await ensureChain();
+    signer = await provider.getSigner();
+    account = await signer.getAddress();
+    nft = new ethers.Contract(C.contract, ABI, signer);
+    $("addr").textContent = "Connected: "+short(account);
+    setStatus("");
+    await refresh();
+  }catch(e){ setStatus(e.shortMessage||e.message||"Connection failed","err"); }
+}
+
+async function ensureChain(){
+  var hex = "0x"+C.chainId.toString(16);
+  try{ await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:hex}]}); }
+  catch(err){
+    if(err.code===4902){
+      await window.ethereum.request({method:"wallet_addEthereumChain",params:[{
+        chainId:hex, chainName:C.name, nativeCurrency:{name:"ETH",symbol:"ETH",decimals:18},
+        rpcUrls:[C.rpc], blockExplorerUrls:[C.explorer]
+      }]});
+    } else throw err;
+  }
+}
+
+async function mint(){
+  try{
+    $("btn").disabled=true;
+    setStatus("Confirm in your wallet…");
+    var price = await nft.price();
+    var tx = await nft.mint(1n, {value: price});
+    setStatus("Minting… <a href='"+C.explorer+"/tx/"+tx.hash+"' target='_blank'>view tx</a>");
+    var receipt = await tx.wait();
+    var tokenId=null, iface=nft.interface;
+    for(var i=0;i<receipt.logs.length;i++){
+      try{ var p=iface.parseLog(receipt.logs[i]);
+        if(p && p.name==="Transfer" && p.args.to.toLowerCase()===account.toLowerCase()){ tokenId=p.args.tokenId; break; }
+      }catch(e){}
+    }
+    setStatus("Minted! 🎉", "ok");
+    await refresh();
+    if(tokenId!==null) showPiece(tokenId);
+  }catch(e){ setStatus(e.shortMessage||e.message||"Mint failed","err"); await refresh(); }
+}
+
+async function showPiece(tokenId){
+  try{
+    var src = nft || read;
+    if(tokenId===undefined || tokenId===null){ var m=await src.minted(); tokenId=m-1n; }
+    var uri = await src.tokenURI(tokenId);
+    var json = JSON.parse(atob(uri.split(",")[1]));
+    var html = atob(json.animation_url.split(",")[1]);
+    $("frame").srcdoc = html;
+    $("cap").textContent = "Your piece #"+tokenId.toString();
+    $("piece").style.display="block";
+  }catch(e){}
+}
+</script>
+
+<script>
+/* live art: hero background, sample + traits, gallery (read-only) */
+(function(){
+  var R = (typeof read!=="undefined" && read) ? read : null;
+  try{ if(!R) R = new ethers.Contract(C.contract, ABI, new ethers.JsonRpcProvider(C.rpc)); }catch(e){ R=null; }
+  var supply = 0;
+  function rnd(n){ return Math.floor(Math.random()*n); }
+  function randId(){ return supply>0 ? rnd(supply) : 0; }
+  function esc(s){ return (s==null?"":String(s)).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];}); }
+
+  async function pieceFor(id){
+    var uri = await R.tokenURI(id);
+    var json = JSON.parse(atob(uri.split(",")[1]));
+    return { html: atob(json.animation_url.split(",")[1]), attrs: json.attributes||[], name: json.name||("#"+id) };
+  }
+  async function paint(el, id){ try{ var p=await pieceFor(id); el.srcdoc=p.html; return p; }catch(e){ return null; } }
+
+  var heroFrame = document.getElementById("heroFrame");
+  async function cycleHero(){
+    if(!R || supply<=0) return;
+    await paint(heroFrame, randId());
+    setTimeout(cycleHero, 12000);
+  }
+
+  var sampleFrame = document.getElementById("sampleFrame");
+  var sampleTraits = document.getElementById("sampleTraits");
+  async function loadSample(){
+    if(!R || supply<=0){ return; }
+    var p = await paint(sampleFrame, randId());
+    if(p){
+      var rows = p.attrs.map(function(a){
+        return '<div class="trait"><span class="t">'+esc(a.trait_type)+'</span><span class="val">'+esc(a.value)+'</span></div>';
+      }).join("");
+      sampleTraits.innerHTML = rows || '<div class="trait"><span class="t">token</span><span class="val">'+esc(p.name)+'</span></div>';
+    }
+  }
+
+  var grid = document.getElementById("grid");
+  async function loadGrid(){
+    if(!R){ return; }
+    grid.innerHTML="";
+    var n = Math.min(6, supply||0);
+    var used = {};
+    for(var i=0;i<n;i++){
+      var id=randId(), guard=0;
+      while(used[id] && guard++<12){ id=randId(); }
+      used[id]=1;
+      var f=document.createElement("iframe"); f.title="piece #"+id; f.setAttribute("scrolling","no");
+      grid.appendChild(f); paint(f, id);
+    }
+  }
+
+  var lc = document.getElementById("lnkContract");
+  if(lc){ lc.href = C.explorer + "/address/" + C.contract; }
+
+  (async function init(){
+    if(!R) return;
+    try{ supply = Number(await R.minted()); }catch(e){ supply=0; }
+    cycleHero(); loadSample(); loadGrid();
+    var ss=document.getElementById("sampleShuf"); if(ss) ss.onclick=loadSample;
+    var gs=document.getElementById("gridShuf"); if(gs) gs.onclick=loadGrid;
+  })();
+})();
