@@ -81,14 +81,11 @@
     <div class="brand">Strange Attractors</div>
     <div class="links">
       <a href="#system" class="hide">The system</a>
-      <a href="#onchain" class="hide">On-chain</a>
       <a href="#mint">Mint</a>
     </div>
   </nav>
 
   <header class="hero" id="mint">
-    <div class="hero-bg"><iframe id="heroFrame" title="live piece" scrolling="no"></iframe></div>
-    <div class="hero-veil"></div>
     <div class="hero-inner">
       <div class="net" id="net"></div>
       <div class="eyebrow">Fully On-Chain</div>
@@ -113,28 +110,7 @@
     <div class="eyebrow" style="margin-bottom:16px">The system</div>
     <h2>One hash. One attractor. Forever.</h2>
     <p class="lead">At mint, the contract stamps your token a unique hash drawn from on-chain data. That hash seeds a deterministic renderer. Feed it the same hash and it draws the exact same piece on any machine, for as long as the chain exists. Nothing is pre-rendered. The image is computed live from the seed every time it loads.</p>
-    <div class="sample">
-      <div>
-        <iframe id="sampleFrame" title="sample piece" scrolling="no"></iframe>
-        <div class="btnrow"><button class="ghost" id="sampleShuf">↻ another piece</button></div>
-      </div>
-      <div>
-        <div class="eyebrow" style="margin-bottom:14px">Traits from the hash</div>
-        <div class="traits" id="sampleTraits"><div class="trait"><span class="t">reading chain</span><span class="val">…</span></div></div>
-      </div>
-    </div>
   </section>
-
-  <div class="band" id="onchain"><div class="inner">
-    <div class="eyebrow" style="margin-bottom:16px">Why it matters</div>
-    <h2>The renderer lives <span class="accent">in the contract.</span></h2>
-    <p class="lead" style="margin:0 auto; text-align:center">No IPFS. No server. No image files sitting on someone's cloud. The script, the traits, and the animation are stored on-chain, so every piece regenerates from just a browser and Robinhood Chain.</p>
-    <div class="points">
-      <div class="point"><div class="k">DETERMINISTIC</div><div class="d">One token hash seeds a real PRNG. Same hash, same art, every time. Verifiable by anyone.</div></div>
-      <div class="point"><div class="k">TRAITS FROM SEED</div><div class="d">Rarity isn't metadata bolted on afterward. Every trait falls straight out of the hash.</div></div>
-      <div class="point"><div class="k">ERC-721</div><div class="d">Standard token on Robinhood Chain, viewable on Blockscout and any RH-chain marketplace.</div></div>
-    </div>
-  </div></div>
 
   <footer>
     <div>Strange Attractors · 1024 · renders forever</div>
@@ -273,47 +249,3 @@ async function showPiece(tokenId){
   }catch(e){}
 }
 </script>
-
-<script>
-/* live art: hero background, sample + traits, gallery (read-only) */
-(function(){
-  var R = (typeof read!=="undefined" && read) ? read : null;
-  try{ if(!R) R = new ethers.Contract(C.contract, ABI, new ethers.JsonRpcProvider(C.rpc, undefined, { batchMaxCount: 1 })); }catch(e){ R=null; }
-  var supply = 0;
-  function rnd(n){ return Math.floor(Math.random()*n); }
-  function randId(){ return supply>0 ? rnd(supply) : 0; }
-  function esc(s){ return (s==null?"":String(s)).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c];}); }
-
-  async function pieceFor(id){ var uri = await R.tokenURI(id); var json = b64json(uri); return { url: json.animation_url, attrs: json.attributes||[], name: json.name||("#"+id) }; }
-  async function paint(el, id){ try{ var p=await pieceFor(id); el.src=p.url; return p; }catch(e){ return null; } }
-
-  var heroFrame = document.getElementById("heroFrame");
-  async function cycleHero(){
-    if(!R || supply<=0) return;
-    await paint(heroFrame, randId());
-    setTimeout(cycleHero, 12000);
-  }
-
-  var sampleFrame = document.getElementById("sampleFrame");
-  var sampleTraits = document.getElementById("sampleTraits");
-  async function loadSample(){
-    if(!R || supply<=0){ return; }
-    var p = await paint(sampleFrame, randId());
-    if(p){
-      var rows = p.attrs.map(function(a){
-        return '<div class="trait"><span class="t">'+esc(a.trait_type)+'</span><span class="val">'+esc(a.value)+'</span></div>';
-      }).join("");
-      sampleTraits.innerHTML = rows || '<div class="trait"><span class="t">token</span><span class="val">'+esc(p.name)+'</span></div>';
-    }
-  }
-
-  var lc = document.getElementById("lnkContract");
-  if(lc){ lc.href = C.explorer + "/address/" + C.contract; }
-
-  (async function init(){
-    if(!R) return;
-    try{ supply = Number(await R.minted()); }catch(e){ supply=0; }
-    cycleHero(); loadSample();
-    var ss=document.getElementById("sampleShuf"); if(ss) ss.onclick=loadSample;
-  })();
-})();
